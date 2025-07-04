@@ -63,8 +63,11 @@ def root(data = Body()):
     #params = json.loads(data.decode('UTF-8'))
     params = data
     print(params)
+    model = "gpt-4o-mini"
+    if "model" in params:
+        model = params["model"]
     output = client.chat.completions.create(
-        model = params["model"],
+        model = model,
         messages = params["messages"],
         temperature = params["temperature"],
         max_tokens = params["max_tokens"]
