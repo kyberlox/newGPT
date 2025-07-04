@@ -48,10 +48,10 @@ def root(data = Body()):
     print(params)
     output = client.chat.completions.create(
         model = params["model"],
-        messages = params["messages"]
-        #temperature = params["temperature"],
-        #max_tokens = params["max_tokens"]
-        ).choices[0].message.conten
+        messages = params["messages"],
+        temperature = params["temperature"],
+        max_tokens = params["max_tokens"]
+        ).choices[0].message.content
 
     '''try:
         lg = output.choices[0].message.content
