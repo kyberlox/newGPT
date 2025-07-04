@@ -9,9 +9,10 @@ import json
 
 from Key import Key
 
-import openai
+from openai import OpenAI
 
-openai.api_key = Key().key
+client = OpenAI()
+client.api_key = Key().key
 
 app = FastAPI()
 
@@ -38,12 +39,12 @@ app.add_middleware(
 def root(data = Body()):
     #params = json.loads(data.decode('UTF-8'))
     params = data
-    output = openai.ChatCompletion.create(
+    output = client.chat.completions.create(
         model = params["model"],
         messages = params["messages"],
-        #temperature = params["temperature"],
+        temperature = params["temperature"],
         max_tokens = params["max_tokens"]
-        )
+        ).choices[0].message.conten
 
     try:
         lg = output.choices[0].message.content
