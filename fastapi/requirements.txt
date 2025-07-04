@@ -1,4 +1,4 @@
 fastapi[all]==0.115.14
 uvicorn==0.34.3
-openai==1.93.0
+openai>=0.27.0
 python-dotenv==1.0.1
