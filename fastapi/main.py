@@ -45,6 +45,7 @@ app.add_middleware(
 def root(data = Body()):
     #params = json.loads(data.decode('UTF-8'))
     params = data
+    print(params)
     output = client.chat.completions.create(
         model = params["model"],
         messages = params["messages"],
