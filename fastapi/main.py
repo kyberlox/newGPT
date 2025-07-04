@@ -52,7 +52,7 @@ def root(data = Body()):
         max_tokens = params["max_tokens"]
         ).choices[0].message.conten
 
-    try:
+    '''try:
         lg = output.choices[0].message.content
         log = f"\n \n :=> \n {params} => \n {lg}"
         l = open('log.txt', 'r')
@@ -66,6 +66,6 @@ def root(data = Body()):
             l = open('log.txt', 'w')
             l.close()
     except:
-        print("ошибка в теле запроса: ", params)
+        print("ошибка в теле запроса: ", params)'''
 
     return output
