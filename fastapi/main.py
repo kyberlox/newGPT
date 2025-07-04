@@ -18,8 +18,7 @@ project_id = os.getenv('project_id')
 
 
 
-client = OpenAI()
-client.api_key = key
+client = OpenAI(api_key = key)
 
 app = FastAPI()
 
