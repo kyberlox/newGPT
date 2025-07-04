@@ -36,7 +36,8 @@ app.add_middleware(
 
 @app.post("/")
 def root(data = Body()):
-    params = json.loads(data.decode('UTF-8'))
+    #params = json.loads(data.decode('UTF-8'))
+    params = data
     output = openai.ChatCompletion.create(
         model = params["model"],
             messages = params["messages"],
