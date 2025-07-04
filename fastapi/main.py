@@ -5,14 +5,21 @@ from starlette.responses import RedirectResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-import json
-
-from Key import Key
-
 from openai import OpenAI
 
+import json
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+key = os.getenv('key')
+organization = os.getenv('organization')
+project_id = os.getenv('project_id')
+
+
+
 client = OpenAI()
-client.api_key = Key().key
+client.api_key = key
 
 app = FastAPI()
 

@@ -1,10 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
-key = os.getenv('key')
-organization = os.getenv('organization')
-project_id = os.getenv('project_id')
+
 
 print(key)
 
