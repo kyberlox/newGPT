@@ -41,19 +41,7 @@ app.add_middleware(
     #allow_headers=["Content-Type", "Accept", "Location", "Allow", "Content-Disposition", "Sec-Fetch-Dest"],
 )
 
-@app.post("/")
-def root(data = Body()):
-    params = json.loads(data.decode('UTF-8'))
-    #params = data
-    print(params)
-    output = client.chat.completions.create(
-        model = params["model"],
-        messages = params["messages"],
-        temperature = params["temperature"],
-        max_tokens = params["max_tokens"]
-        ).choices[0].message.content
-
-    '''try:
+'''try:
         lg = output.choices[0].message.content
         log = f"\n \n :=> \n {params} => \n {lg}"
         l = open('log.txt', 'r')
@@ -67,6 +55,32 @@ def root(data = Body()):
             l = open('log.txt', 'w')
             l.close()
     except:
-        print("ошибка в теле запроса: ", params)'''
+        print("ошибка в теле запроса: ", params)
+'''
+
+@app.post("/")
+def root(data = Body()):
+    params = json.loads(data.decode('UTF-8'))
+    #params = data
+    print(params)
+    output = client.chat.completions.create(
+        model = params["model"],
+        messages = params["messages"],
+        temperature = params["temperature"],
+        max_tokens = params["max_tokens"]
+        ).choices[0].message.content
+
+    return output
+
+@app.post("/api/")
+def root(data = Body()):
+    params = data
+    print(params)
+    output = client.chat.completions.create(
+        model = params["model"],
+        messages = params["messages"],
+        temperature = params["temperature"],
+        max_tokens = params["max_tokens"]
+        ).choices[0].message.content
 
     return output
