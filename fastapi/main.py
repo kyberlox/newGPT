@@ -68,7 +68,7 @@ def root(data = Body()):
         messages = params["messages"],
         temperature = params["temperature"],
         max_tokens = params["max_tokens"]
-        ).choices[0]
+        )
 
     return output
 
