@@ -6,6 +6,8 @@ key = os.getenv('key')
 organization = os.getenv('organization')
 project_id = os.getenv('project_id')
 
+print(key)
+
 class Key:
     def __init__(self):
         self.key = key
