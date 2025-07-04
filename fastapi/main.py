@@ -40,7 +40,7 @@ def root(data = Body()):
     params = data
     output = openai.ChatCompletion.create(
         model = params["model"],
-            messages = params["messages"],
+        messages = params["messages"],
         temperature = params["temperature"],
         max_tokens = params["max_tokens"]
         )
