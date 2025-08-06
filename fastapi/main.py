@@ -11,6 +11,8 @@ import json
 import os
 from dotenv import load_dotenv
 
+import asyncio
+
 load_dotenv()
 key = os.getenv('key')
 organization = os.getenv('organization')
@@ -58,7 +60,7 @@ app.add_middleware(
         print("ошибка в теле запроса: ", params)
 '''
 
-@app.post("/")
+@app.post("/he")
 def root(data = Body()):
     params = json.loads(data.decode('UTF-8'))
     #params = data
@@ -75,8 +77,8 @@ def root(data = Body()):
 
     return output
 
-@app.post("/api/")
-def root(data = Body()):
+@app.post("/api")
+def api(data = Body()):
     params = data
     print(params)
     output = client.chat.completions.create(
@@ -87,3 +89,24 @@ def root(data = Body()):
         ).choices[0].message.content
 
     return output
+
+#диалоговое общение
+@app.post("/dialog")
+def dialog(data=Body()):
+    #если задана модель
+    model = "gpt-4o-mini"
+    if "model" in data:
+        model = data["model"]
+
+    #читаем диалог
+    messages = []
+    #диалог с параметрами
+    if "messages" in data:
+        messages = data["messages"]
+    #переписка
+    else:
+        messages = data
+
+#диалог скартинкой
+
+#анализ файла
