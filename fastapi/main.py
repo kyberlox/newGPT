@@ -193,7 +193,7 @@ async def analyze_image(file: UploadFile, prompt: str = "Что изображе
         base64_image = base64.b64encode(image_bytes).decode("utf-8")
 
         # Отправляем в OpenAI GPT-4 Vision
-        response = openai.chat.completions.create(
+        response = client.chat.completions.create(
             model="gpt-4-vision-preview",
             messages=[
                 {
