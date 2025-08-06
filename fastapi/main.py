@@ -239,18 +239,16 @@ async def analyze_image(file: UploadFile, data=Body()):
             messages = data
 
         current_file_response = {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:{file.content_type};base64,{base64_image}"
-                            },
-                        },
-                    ],
-                }
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:{file.content_type};base64,{base64_image}"
+                    },
+                },
             ],
-            max_tokens=1000
         }
 
         messages.append(current_file_response)
