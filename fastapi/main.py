@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 
 from typing import Annotated, List
 
+import openai
 from openai import OpenAI
 from openai import AsyncOpenAI
 
