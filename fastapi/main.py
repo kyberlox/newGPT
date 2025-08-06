@@ -120,7 +120,10 @@ async def dialog(data=Body()):
 
     response = await async_client.responses.create(
         model = model,
-        
+        messages = messages
+    )
+
+    return messages
     
 
     
