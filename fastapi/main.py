@@ -4,7 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import UploadFile, File
+from fastapi import UploadFile, File, HTTPException
+from fastapi.responses import JSONResponse
 
 from openai import OpenAI
 from openai import AsyncOpenAI
@@ -132,6 +133,7 @@ async def dialog(data=Body()):
     
 
 
+'''
 #анализ файла
 @app.post("/send_file")
 def upload_file(file: UploadFile, data=Body()):
@@ -155,5 +157,70 @@ def upload_file(file: UploadFile, data=Body()):
 
     #и дописываем в messages
     #file_promt{"type": "input_image", "image_url": f"data:image/png;base64,{b64_image}"}
+    file_promt{"type": file.content_type, "image_url": f"data:{file.content_type};base64,{b64_image}"}
 
     return file
+'''
+
+# Разрешенные типы изображений
+ALLOWED_MIME_TYPES = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/gif": "gif",
+    "image/webp": "webp",
+}
+
+@app.post("/analyze-image/")
+async def analyze_image(file: UploadFile, prompt: str = "Что изображено на картинке?"):
+    # Проверяем, что файл - изображение
+    if file.content_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Неподдерживаемый тип файла. Разрешены: {', '.join(ALLOWED_MIME_TYPES.keys())}"
+        )
+
+    # Проверка размера (макс. 10MB)
+    max_size = 10 * 1024 * 1024
+    file.file.seek(0, 2)
+    file_size = file.file.tell()
+    if file_size > max_size:
+        raise HTTPException(status_code=413, detail="Изображение слишком большое (максимум 10MB)")
+    file.file.seek(0)
+
+    try:
+        # Читаем файл и кодируем в base64
+        image_bytes = await file.read()
+        base64_image = base64.b64encode(image_bytes).decode("utf-8")
+
+        # Отправляем в OpenAI GPT-4 Vision
+        response = openai.chat.completions.create(
+            model="gpt-4-vision-preview",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{file.content_type};base64,{base64_image}"
+                            },
+                        },
+                    ],
+                }
+            ],
+            max_tokens=1000,
+        )
+
+        # Получаем ответ
+        analysis = response.choices[0].message.content
+
+        return JSONResponse({
+            "success": True,
+            "filename": file.filename,
+            "image_type": file.content_type,
+            "analysis": analysis,
+        })
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
