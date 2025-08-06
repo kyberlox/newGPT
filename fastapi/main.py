@@ -172,7 +172,7 @@ ALLOWED_MIME_TYPES = {
     "image/webp": "webp",
 }
 
-@app.post("/analyze-image/")
+@app.post("/analyze-image")
 async def create_upload_files(files: List[UploadFile], prompt: str = "Что изображено на картинках?"):
     try:
         files_urls = []
@@ -239,7 +239,7 @@ async def create_upload_files(files: List[UploadFile], prompt: str = "Что и�
 
 openai.api_key = key
 
-@app.post("/generate-image/")
+@app.post("/generate-image")
 async def generate_image(
     prompt: str,
     size: str = "1024x1024",
