@@ -14,7 +14,7 @@ from openai import OpenAI
 from openai import AsyncOpenAI
 
 
-import requests
+
 import json
 import os
 from dotenv import load_dotenv
@@ -247,20 +247,15 @@ async def generate_image(
     style: str = "vivid"
 ):
     """
-    Генерирует изображение по текстовому описанию через DALL·E 3
+    Генерирует изображение через DALL·E 3 (возвращает только URL)
     
     Параметры:
-    - prompt: описание изображения (обязательно)
+    - prompt: описание изображения
     - size: размер (1024x1024, 1024x1792 или 1792x1024)
     - quality: качество ("standard" или "hd")
     - style: стиль ("vivid" или "natural")
     """
     try:
-        # Проверка допустимых значений
-        valid_sizes = ["1024x1024", "1024x1792", "1792x1024"]
-        if size not in valid_sizes:
-            raise HTTPException(status_code=400, detail=f"Недопустимый размер. Допустимые значения: {', '.join(valid_sizes)}")
-
         # Вызов DALL·E 3
         response = openai.images.generate(
             model="dall-e-3",
@@ -268,24 +263,16 @@ async def generate_image(
             size=size,
             quality=quality,
             style=style,
-            n=1  # Количество изображений
+            n=1
         )
 
-        # Получаем URL изображения
-        image_url = response.data[0].url
-        
-        # Конвертируем в base64 (опционально)
-        image_data = requests.get(image_url).content
-        base64_image = base64.b64encode(image_data).decode('utf-8')
-        
         return JSONResponse({
             "status": "success",
-            "image_url": image_url,
-            "base64_image": base64_image,
-            "revised_prompt": response.data[0].revised_prompt
+            "image_url": response.data[0].url,  # URL изображения (живет 2 часа)
+            "revised_prompt": response.data[0].revised_prompt  # Оптимизированный запрос
         })
 
     except openai.BadRequestError as e:
-        raise HTTPException(status_code=400, detail=f"Ошибка в запросе: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Неверный запрос: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка генерации: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
