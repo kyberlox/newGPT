@@ -123,7 +123,7 @@ async def dialog(data=Body()):
         messages = messages
     )
 
-    return messages
+    return response
     
 
     
