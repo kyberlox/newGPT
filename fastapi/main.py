@@ -60,8 +60,9 @@ app.add_middleware(
         print("ошибка в теле запроса: ", params)
 '''
 
-@app.post("/he")
+@app.post("/")
 def root(data = Body()):
+    print(data)
     params = json.loads(data.decode('UTF-8'))
     #params = data
     print(params)
