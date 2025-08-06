@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import UploadFile, File
 
 from openai import OpenAI
 from openai import AsyncOpenAI
@@ -15,6 +16,8 @@ import os
 from dotenv import load_dotenv
 
 import asyncio
+
+import base64
 
 
 
@@ -128,9 +131,29 @@ async def dialog(data=Body()):
     return messages
     
 
-    
-    
-
-#диалог с картинкой
 
 #анализ файла
+@app.post("/send_file")
+def upload_file(file: UploadFile, data=Body()):
+    #если задана модель
+    model = "gpt-4o-mini"
+    if "model" in data:
+        model = data["model"]
+
+    #читаем диалог
+    messages = []
+    #диалог с параметрами
+    if "messages" in data:
+        messages = data["messages"]
+    #переписка
+    else:
+        messages = data
+
+    #просто декодируем в base64
+    #with open("path/to/image.png", "rb") as image_file:
+        #b64_image = base64.b64encode(image_file.read()).decode("utf-8")
+
+    #и дописываем в messages
+    #file_promt{"type": "input_image", "image_url": f"data:image/png;base64,{b64_image}"}
+
+    return file
