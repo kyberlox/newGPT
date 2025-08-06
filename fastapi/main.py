@@ -171,7 +171,7 @@ ALLOWED_MIME_TYPES = {
 }
 
 @app.post("/analyze-image/")
-async def analyze_image(file: UploadFile, prompt: str = "Что изображено на картинке?"):
+async def analyze_image(file: UploadFile, data=Body()):
     # Проверяем, что файл - изображение
     if file.content_type not in ALLOWED_MIME_TYPES:
         raise HTTPException(
@@ -192,7 +192,8 @@ async def analyze_image(file: UploadFile, prompt: str = "Что изображе
         image_bytes = await file.read()
         base64_image = base64.b64encode(image_bytes).decode("utf-8")
 
-        # Отправляем в OpenAI GPT-4 Vision
+        # Отправляем в OpenAI GPT-4o
+        '''
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
@@ -221,6 +222,41 @@ async def analyze_image(file: UploadFile, prompt: str = "Что изображе
             "image_type": file.content_type,
             "analysis": analysis,
         })
+        '''
+
+        #если задана модель
+        model = "gpt-4o-mini"
+        if "model" in data:
+            model = data["model"]
+
+        #читаем диалог
+        messages = []
+        #диалог с параметрами
+        if "messages" in data:
+            messages = data["messages"]
+        #переписка
+        else:
+            messages = data
+
+        current_file_response = {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{file.content_type};base64,{base64_image}"
+                            },
+                        },
+                    ],
+                }
+            ],
+            max_tokens=1000
+        }
+
+        messages.append(current_file_response)
+
+        return messages
+
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
