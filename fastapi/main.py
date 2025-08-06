@@ -194,7 +194,7 @@ async def analyze_image(file: UploadFile, prompt: str = "Что изображе
 
         # Отправляем в OpenAI GPT-4 Vision
         response = client.chat.completions.create(
-            model="gpt-4-vision-preview",
+            model="gpt-4o",
             messages=[
                 {
                     "role": "user",
