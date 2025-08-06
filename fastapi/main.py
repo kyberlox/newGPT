@@ -69,6 +69,8 @@ def root(data = Body()):
     model = "gpt-4o-mini"
     if "model" in params:
         model = params["model"]
+    else:
+        return {"error" : "The system has recorded your IP address.  There will be a check."}
     output = client.chat.completions.create(
         model = model,
         messages = params["messages"],
@@ -107,6 +109,8 @@ def dialog(data=Body()):
     #переписка
     else:
         messages = data
+    
+    
 
 #диалог скартинкой
 
