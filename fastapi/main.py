@@ -24,7 +24,6 @@ import asyncio
 import base64
 
 
-
 load_dotenv()
 key = os.getenv('key')
 organization = os.getenv('organization')
