@@ -118,7 +118,7 @@ async def dialog(data=Body()):
     else:
         messages = data
 
-    response = await async_client.responses.create(
+    response = await async_client.chat.completions.create(
         model = model,
         messages = messages
     )
