@@ -14,7 +14,7 @@ from openai import OpenAI
 from openai import AsyncOpenAI
 
 
-
+import requests
 import json
 import os
 from dotenv import load_dotenv
