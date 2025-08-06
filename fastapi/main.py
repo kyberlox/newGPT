@@ -123,7 +123,9 @@ async def dialog(data=Body()):
         messages = messages
     )
 
-    return response
+    messages.append({"role": "assistant", "content": response["choices"][0]["message"].content})
+
+    return messages
     
 
     
