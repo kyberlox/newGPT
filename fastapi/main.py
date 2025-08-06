@@ -7,6 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
 
+from typing import Annotated, List
+
 from openai import OpenAI
 from openai import AsyncOpenAI
 
@@ -171,43 +173,51 @@ ALLOWED_MIME_TYPES = {
 }
 
 @app.post("/analyze-image/")
-async def analyze_image(file: UploadFile, data=Body()):
-    # Проверяем, что файл - изображение
-    if file.content_type not in ALLOWED_MIME_TYPES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Неподдерживаемый тип файла. Разрешены: {', '.join(ALLOWED_MIME_TYPES.keys())}"
-        )
-
-    # Проверка размера (макс. 10MB)
-    max_size = 10 * 1024 * 1024
-    file.file.seek(0, 2)
-    file_size = file.file.tell()
-    if file_size > max_size:
-        raise HTTPException(status_code=413, detail="Изображение слишком большое (максимум 10MB)")
-    file.file.seek(0)
-
+async def create_upload_files(files: List[UploadFile], prompt: str = "Что изображено на картинках?"):
     try:
-        # Читаем файл и кодируем в base64
-        image_bytes = await file.read()
-        base64_image = base64.b64encode(image_bytes).decode("utf-8")
+        files_urls = []
+        # Обработка каждого файла
+        for file in files:
+
+            # Проверяем, что файл - изображение
+            if file.content_type not in ALLOWED_MIME_TYPES:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Неподдерживаемый тип файла. Разрешены: {', '.join(ALLOWED_MIME_TYPES.keys())}"
+                )
+
+            # Проверка размера (макс. 10MB)
+            max_size = 10 * 1024 * 1024
+            file.file.seek(0, 2)
+            file_size = file.file.tell()
+            if file_size > max_size:
+                raise HTTPException(status_code=413, detail="Изображение слишком большое (максимум 10MB)")
+            file.file.seek(0)
+
+            # Читаем файл и кодируем в base64
+            image_bytes = await file.read()
+            base64_image = base64.b64encode(image_bytes).decode("utf-8")
+
+            file_url = {
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:{file.content_type};base64,{base64_image}"
+                },
+            }
+
+            files_urls.append(file_url)
+
+
+        content = files_urls
+        content.append({"type": "text", "text": prompt})
 
         # Отправляем в OpenAI GPT-4o
-        '''
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {
                     "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:{file.content_type};base64,{base64_image}"
-                            },
-                        },
-                    ],
+                    "content": content
                 }
             ],
             max_tokens=1000,
@@ -233,7 +243,7 @@ async def analyze_image(file: UploadFile, data=Body()):
         print(data)
         messages =  json.loads(data)
         print(messages)
-        
+
         current_file_response = {
             "role": "user",
             "content": [
@@ -249,7 +259,6 @@ async def analyze_image(file: UploadFile, data=Body()):
         messages.append(current_file_response)
 
         return messages
-
-
+        '''
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
