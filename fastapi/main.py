@@ -230,6 +230,7 @@ async def analyze_image(file: UploadFile, data=Body()):
             model = data["model"]
 
         #читаем диалог
+        print(data)
         messages = data
 
         current_file_response = {
