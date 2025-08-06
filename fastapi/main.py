@@ -232,33 +232,57 @@ async def create_upload_files(files: List[UploadFile], prompt: str = "Что и�
             "image_type": file.content_type,
             "analysis": analysis,
         })
-        '''
-
-        #если задана модель
-        model = "gpt-4o-mini"
-        if "model" in data:
-            model = data["model"]
-
-        #читаем диалог
-        print(data)
-        messages =  json.loads(data)
-        print(messages)
-
-        current_file_response = {
-            "role": "user",
-            "content": [
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:{file.content_type};base64,{base64_image}"
-                    },
-                },
-            ],
-        }
-
-        messages.append(current_file_response)
-
-        return messages
-        '''
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
+
+@app.post("/generate-image/")
+async def generate_image(
+    prompt: str,
+    size: str = "1024x1024",
+    quality: str = "standard",
+    style: str = "vivid"
+):
+    """
+    Генерирует изображение по текстовому описанию через DALL·E 3
+    
+    Параметры:
+    - prompt: описание изображения (обязательно)
+    - size: размер (1024x1024, 1024x1792 или 1792x1024)
+    - quality: качество ("standard" или "hd")
+    - style: стиль ("vivid" или "natural")
+    """
+    try:
+        # Проверка допустимых значений
+        valid_sizes = ["1024x1024", "1024x1792", "1792x1024"]
+        if size not in valid_sizes:
+            raise HTTPException(status_code=400, detail=f"Недопустимый размер. Допустимые значения: {', '.join(valid_sizes)}")
+
+        # Вызов DALL·E 3
+        response = client.images.generate(
+            model="dall-e-3",
+            prompt=prompt,
+            size=size,
+            quality=quality,
+            style=style,
+            n=1  # Количество изображений
+        )
+
+        # Получаем URL изображения
+        image_url = response.data[0].url
+        
+        # Конвертируем в base64 (опционально)
+        image_data = requests.get(image_url).content
+        base64_image = base64.b64encode(image_data).decode('utf-8')
+        
+        return JSONResponse({
+            "status": "success",
+            "image_url": image_url,
+            "base64_image": base64_image,
+            "revised_prompt": response.data[0].revised_prompt
+        })
+
+    except openai.BadRequestError as e:
+        raise HTTPException(status_code=400, detail=f"Ошибка в запросе: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка генерации: {str(e)}")
