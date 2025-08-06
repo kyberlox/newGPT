@@ -230,13 +230,7 @@ async def analyze_image(file: UploadFile, data=Body()):
             model = data["model"]
 
         #читаем диалог
-        messages = []
-        #диалог с параметрами
-        if "messages" in data:
-            messages = data["messages"]
-        #переписка
-        else:
-            messages = data
+        messages = data
 
         current_file_response = {
             "role": "user",
