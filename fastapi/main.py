@@ -241,7 +241,6 @@ async def analyze_image(file: UploadFile, data=Body()):
         current_file_response = {
             "role": "user",
             "content": [
-                {"type": "text", "text": prompt},
                 {
                     "type": "image_url",
                     "image_url": {
