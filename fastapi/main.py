@@ -236,6 +236,9 @@ async def create_upload_files(files: List[UploadFile], prompt: str = "Что и�
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
 
+
+openai.api_key = key
+
 @app.post("/generate-image/")
 async def generate_image(
     prompt: str,
@@ -259,7 +262,7 @@ async def generate_image(
             raise HTTPException(status_code=400, detail=f"Недопустимый размер. Допустимые значения: {', '.join(valid_sizes)}")
 
         # Вызов DALL·E 3
-        response = client.images.generate(
+        response = openai.images.generate(
             model="dall-e-3",
             prompt=prompt,
             size=size,
