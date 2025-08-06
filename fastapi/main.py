@@ -231,8 +231,9 @@ async def analyze_image(file: UploadFile, data=Body()):
 
         #читаем диалог
         print(data)
-        messages = data
-
+        messages =  json.loads(data)
+        print(messages)
+        
         current_file_response = {
             "role": "user",
             "content": [
