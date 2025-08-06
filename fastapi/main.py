@@ -6,12 +6,17 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from openai import OpenAI
+from openai import AsyncOpenAI
+
+
 
 import json
 import os
 from dotenv import load_dotenv
 
 import asyncio
+
+
 
 load_dotenv()
 key = os.getenv('key')
@@ -21,6 +26,9 @@ project_id = os.getenv('project_id')
 
 
 client = OpenAI(api_key = key)
+async_client = AsyncOpenAI(api_key = key)
+
+
 
 app = FastAPI()
 
@@ -95,7 +103,7 @@ def api(data = Body()):
 
 #диалоговое общение
 @app.post("/dialog")
-def dialog(data=Body()):
+async def dialog(data=Body()):
     #если задана модель
     model = "gpt-4o-mini"
     if "model" in data:
@@ -109,6 +117,12 @@ def dialog(data=Body()):
     #переписка
     else:
         messages = data
+
+    response = await async_client.responses.create(
+        model = model,
+        
+    
+
     
     
 
