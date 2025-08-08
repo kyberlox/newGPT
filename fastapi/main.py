@@ -261,7 +261,7 @@ async def generate_image(data=Body()):
     if "size" in data:
         size = data["size"]
 
-    quality "standard"
+    quality = "standard"
     if "quality" in data:
         quality = data["quality"]
 
