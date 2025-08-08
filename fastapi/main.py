@@ -45,7 +45,8 @@ origins = [
     web,
     "https://178.217.101.144/",
     "https://gpt.emk.ru",
-    "https://portal.emk.ru"
+    "https://portal.emk.ru",
+    "http://intranet.emk.org.ru/
 ]
 
 app.add_middleware(
