@@ -240,12 +240,7 @@ async def create_upload_files(files: List[UploadFile], prompt: str = "Что и�
 openai.api_key = key
 
 @app.post("/generate-image")
-async def generate_image(
-    prompt: str,
-    size: str = "1024x1024",
-    quality: str = "standard",
-    style: str = "vivid"
-):
+async def generate_image(data=Body()):  
     """
     Генерирует изображение через DALL·E 3 (возвращает только URL)
     
@@ -255,6 +250,25 @@ async def generate_image(
     - quality: качество ("standard" или "hd")
     - style: стиль ("vivid" или "natural")
     """
+
+    prompt: str
+    if "prompt" in data:
+        prompt = data["prompt"]
+    else:
+        raise HTTPException(status_code=500, detail="Invilid token!")
+
+    size = "1024x1024"
+    if "size" in data:
+        size = data["size"]
+
+    quality "standard"
+    if "quality" in data:
+        quality = data["quality"]
+
+    style = "vivid"
+    if "style" in data:
+        style = data["style"]
+
     try:
         # Вызов DALL·E 3
         response = openai.images.generate(
