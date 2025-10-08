@@ -42,6 +42,7 @@ link = "127.0.0.1:8000"
 web = "https://gpt.emk.ru/"
 
 origins = [
+    '*',
     web,
     "https://178.217.101.144/",
     "https://gpt.emk.ru",
