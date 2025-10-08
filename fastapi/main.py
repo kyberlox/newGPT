@@ -112,6 +112,7 @@ def api(data = Body()):
 #диалоговое общение
 @app.post("/dialog")
 async def dialog(data=Body()):
+    print(data)
     #если задана модель
     model = "gpt-4o-mini"
     if "model" in data:
