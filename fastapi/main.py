@@ -305,7 +305,7 @@ async def generate_image(data=Body()):
 
 
 @app.post("/analyze-files")
-async def analyze_files(files: List[UploadFile], data = Body()):
+async def analyze_files(files: List[UploadFile], data : dict = Body()):
     """Анализирует различные типы файлов"""
     print(data)
     if "prompt" in data.keys:
