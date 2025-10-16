@@ -23,12 +23,7 @@ import asyncio
 
 import base64
 
-import pandas as pd
-import json
-import xml.etree.ElementTree as ET
-from docx import Document
-import PyPDF2
-import io
+import uuid
 
 
 load_dotenv()
@@ -306,92 +301,6 @@ async def generate_image(data=Body()):
         raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
 
 
-
-# Расширенные разрешенные типы файлов
-ALLOWED_MIME_TYPES = {
-    # Изображения
-    "image/jpeg": "jpg",
-    "image/png": "png",
-    "image/gif": "gif",
-    "image/webp": "webp",
-    
-    # Документы
-    "application/pdf": "pdf",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
-    "application/vnd.ms-excel": "xls",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
-    "application/json": "json",
-    "application/xml": "xml",
-    "text/xml": "xml",
-    "text/plain": "txt",
-    "text/csv": "csv",
-}
-
-def extract_text_from_file(file_bytes: bytes, content_type: str, filename: str) -> str:
-    """Извлекает текст из файла в зависимости от его типа"""
-    
-    try:
-        if content_type == "application/pdf":
-            return extract_text_from_pdf(file_bytes)
-        
-        elif content_type in ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"]:
-            return extract_text_from_docx(file_bytes)
-        
-        elif content_type in ["application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]:
-            return extract_text_from_excel(file_bytes)
-        
-        elif content_type in ["application/json", "text/json"]:
-            return extract_text_from_json(file_bytes)
-        
-        elif content_type in ["application/xml", "text/xml"]:
-            return extract_text_from_xml(file_bytes)
-        
-        elif content_type in ["text/plain", "text/csv"]:
-            return file_bytes.decode('utf-8')
-        
-        else:
-            return f"Формат файла {content_type} не поддерживается для текстового анализа"
-            
-    except Exception as e:
-        return f"Ошибка при извлечении текста из файла {filename}: {str(e)}"
-
-def extract_text_from_pdf(file_bytes: bytes) -> str:
-    """Извлекает текст из PDF"""
-    pdf_file = PyPDF2.PdfReader(io.BytesIO(file_bytes))
-    text = ""
-    for page in pdf_file.pages:
-        text += page.extract_text() + "\n"
-    return text
-
-def extract_text_from_docx(file_bytes: bytes) -> str:
-    """Извлекает текст из Word документа"""
-    doc = Document(io.BytesIO(file_bytes))
-    text = ""
-    for paragraph in doc.paragraphs:
-        text += paragraph.text + "\n"
-    return text
-
-def extract_text_from_excel(file_bytes: bytes) -> str:
-    """Извлекает текст из Excel файла"""
-    excel_file = pd.ExcelFile(io.BytesIO(file_bytes))
-    text = ""
-    
-    for sheet_name in excel_file.sheet_names:
-        df = pd.read_excel(excel_file, sheet_name=sheet_name)
-        text += f"Лист: {sheet_name}\n"
-        text += df.to_string() + "\n\n"
-    
-    return text
-
-def extract_text_from_json(file_bytes: bytes) -> str:
-    """Извлекает текст из JSON файла"""
-    data = json.loads(file_bytes.decode('utf-8'))
-    return json.dumps(data, ensure_ascii=False, indent=2)
-
-def extract_text_from_xml(file_bytes: bytes) -> str:
-    """Извлекает текст из XML файла"""
-    root = ET.fromstring(file_bytes.decode('utf-8'))
-    return ET.tostring(root, encoding='unicode', method='xml')
 
 @app.post("/analyze-files")
 async def analyze_files(files: List[UploadFile], data = Body()):
