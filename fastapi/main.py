@@ -313,7 +313,7 @@ async def analyze_files(files: List[UploadFile], data = Body()):
     else:
         prompt = "Проанализируй содержимое этих файлов"
     
-     try:
+    try:
         # Загружаем файлы
         file_ids = []
         for file in files:
