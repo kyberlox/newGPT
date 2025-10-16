@@ -313,7 +313,7 @@ async def analyze_files(files: List[UploadFile], data = Body()):
     else:
         prompt = "Проанализируй содержимое этих файлов"
     
-     try:
+    try:
         uploaded_files = []
         
         # Загружаем все файлы в OpenAI
