@@ -500,9 +500,7 @@ async def analyze_files(files: List[UploadFile], data = Body()):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
 
-# Альтернативная версия только для документов (без изображений)
-@app.post("/analyze-documents")
-async def analyze_documents(files: List[UploadFile], data = Body()):
+
     """Анализирует только документы (без изображений)"""
     
     if "prompt" in data:
