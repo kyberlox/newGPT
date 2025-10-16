@@ -307,12 +307,15 @@ async def generate_image(data=Body()):
 
 
 @app.post("/analyze-files")
-async def analyze_files(files: List[UploadFile], data: Dict[str, Any] = Body(...)
+async def analyze_files(
+    files: List[UploadFile] = File(...),
+    data: str = Body(..., media_type="application/json")
 ):
     """Финальный рабочий эндпоинт для анализа файлов"""
     try:
-        # Извлекаем промпт из данных
-        prompt = data.get("prompt", "Проанализируйте файлы")
+        # Парсим JSON строку в словарь
+        data_dict = json.loads(data)
+        prompt = data_dict.get("prompt", "Проанализируйте файлы")
         
         files_content = []
         
