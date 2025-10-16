@@ -455,7 +455,7 @@ async def analyze_files(files: List[UploadFile], data = Body()):
                     "content": files_content
                 }
             ],
-            max_tokens=2000,  # Увеличиваем токены для текстовых файлов
+            max_tokens=20000,  # Увеличиваем токены для текстовых файлов
         )
 
         analysis = response.choices[0].message.content
