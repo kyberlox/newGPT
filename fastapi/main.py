@@ -436,6 +436,9 @@ async def analyze_files(files: List[UploadFile], data = Body()):
             else:
                 # Для документов извлекаем текст
                 extracted_text = extract_text_from_file(file_bytes, file.content_type, file.filename)
+                # Ограничиваем текст
+                if len(extracted_text) > 10000:
+                    extracted_text = extracted_text[:10000] + "... [текст сокращен]"
                 file_content = {
                     "type": "text",
                     "text": f"Файл: {file.filename}\n\n{extracted_text}"
