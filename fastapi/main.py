@@ -394,7 +394,7 @@ def extract_text_from_xml(file_bytes: bytes) -> str:
     return ET.tostring(root, encoding='unicode', method='xml')
 
 @app.post("/analyze-files")
-async def analyze_files(files: List[UploadFile], data: dict = Body()):
+async def analyze_files(files: List[UploadFile], data = Body()):
     """Анализирует различные типы файлов"""
     
     if "prompt" in data:
@@ -471,7 +471,7 @@ async def analyze_files(files: List[UploadFile], data: dict = Body()):
 
 # Альтернативная версия только для документов (без изображений)
 @app.post("/analyze-documents")
-async def analyze_documents(files: List[UploadFile], data: dict = Body()):
+async def analyze_documents(files: List[UploadFile], data = Body()):
     """Анализирует только документы (без изображений)"""
     
     if "prompt" in data:
