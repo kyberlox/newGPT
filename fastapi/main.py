@@ -314,51 +314,105 @@ async def analyze_files(files: List[UploadFile], data = Body()):
         prompt = "Проанализируй содержимое этих файлов"
     
     try:
-        # Разделяем файлы на изображения и документы
-        image_files = []
-        document_files = []
+        files_content = []
         
         for file in files:
             file_bytes = await file.read()
+            
             if file.content_type.startswith("image/"):
-                image_files.append({
-                    "filename": file.filename,
-                    "content_type": file.content_type,
-                    "bytes": file_bytes
+                # Для изображений используем base64
+                base64_image = base64.b64encode(file_bytes).decode("utf-8")
+                files_content.append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:{file.content_type};base64,{base64_image}"
+                    }
                 })
             else:
-                document_files.append({
-                    "filename": file.filename,
-                    "content_type": file.content_type,
-                    "bytes": file_bytes
+                # Для документов используем текстовое извлечение
+                extracted_text = await extract_text_from_document(file_bytes, file.content_type, file.filename)
+                files_content.append({
+                    "type": "text", 
+                    "text": f"Содержимое файла '{file.filename}':\n\n{extracted_text}"
                 })
         
-        # Обрабатываем документы через Assistants API
-        document_analysis = ""
-        if document_files:
-            document_analysis = await process_documents_with_assistant(document_files, prompt)
+        # Добавляем промпт
+        files_content.append({"type": "text", "text": prompt})
         
-        # Обрабатываем изображения через Chat Completions
-        image_analysis = ""
-        if image_files:
-            image_analysis = await process_images_with_chat(image_files, prompt)
+        # Отправляем в OpenAI
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "user",
+                    "content": files_content
+                }
+            ],
+            max_tokens=2000
+        )
         
-        # Формируем финальный ответ
-        if document_analysis and image_analysis:
-            final_analysis = f"АНАЛИЗ ДОКУМЕНТОВ:\n{document_analysis}\n\nАНАЛИЗ ИЗОБРАЖЕНИЙ:\n{image_analysis}"
-        elif document_analysis:
-            final_analysis = document_analysis
-        else:
-            final_analysis = image_analysis
+        analysis = response.choices[0].message.content
         
         return {
             "success": True,
             "files_processed": [file.filename for file in files],
-            "analysis": final_analysis
+            "analysis": analysis
         }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
+
+async def extract_text_from_document(file_bytes: bytes, content_type: str, filename: str) -> str:
+    """Извлекает текст из документов простым способом"""
+    try:
+        if content_type == "application/pdf":
+            # Для PDF используем простой текстовый парсер
+            import PyPDF2
+            import io
+            pdf_file = PyPDF2.PdfReader(io.BytesIO(file_bytes))
+            text = ""
+            for page in pdf_file.pages:
+                text += page.extract_text() + "\n"
+            return text if text.strip() else "Не удалось извлечь текст из PDF файла"
+        
+        elif content_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            # Для DOCX используем простой парсер
+            from docx import Document
+            import io
+            doc = Document(io.BytesIO(file_bytes))
+            text = ""
+            for paragraph in doc.paragraphs:
+                if paragraph.text.strip():
+                    text += paragraph.text + "\n"
+            return text if text.strip() else "Не удалось извлечь текст из Word документа"
+        
+        elif content_type in ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+                             "application/vnd.ms-excel"]:
+            # Для Excel используем простой парсер
+            import pandas as pd
+            import io
+            excel_file = pd.ExcelFile(io.BytesIO(file_bytes))
+            text = f"Файл Excel содержит {len(excel_file.sheet_names)} листов: {', '.join(excel_file.sheet_names)}\n\n"
+            
+            for sheet_name in excel_file.sheet_names[:2]:  # Ограничиваем первыми 2 листами
+                df = pd.read_excel(excel_file, sheet_name=sheet_name, nrows=10)  # Ограничиваем 10 строками
+                text += f"Лист: {sheet_name} (строк: {len(df)}, столбцов: {len(df.columns)})\n"
+                text += "Первые строки данных:\n"
+                text += df.head(3).to_string() + "\n\n"  # Только первые 3 строки
+            return text
+        
+        elif content_type in ["text/plain", "text/csv"]:
+            # Для текстовых файлов
+            try:
+                return file_bytes.decode('utf-8')[:5000]  # Ограничиваем размер
+            except:
+                return file_bytes.decode('latin-1')[:5000]
+        
+        else:
+            return f"Формат файла {content_type} не поддерживается для автоматического извлечения текста"
+            
+    except Exception as e:
+        return f"Ошибка при извлечении текста: {str(e)}"
 
 async def process_documents_with_assistant(document_files: list, prompt: str) -> str:
     """Обрабатывает документы через Assistants API"""
