@@ -181,11 +181,11 @@ ALLOWED_IMAGE_TYPES = {
 }
 
 @app.post("/analyze-image")
-async def create_upload_files(files: List[UploadFile],  prompt: str = "Что изображено на картинках?"):
-    if "prompt" in data.keys():
-        promt = data["promt"]
-    else:
-        prompt = "Что изображено на картинках?"
+async def create_upload_files(files: List[UploadFile],  prompt: str = "Что изображено на картинках?"): #data=Body()): 
+    # if "prompt" in data.keys():
+    #     promt = data["promt"]
+    # else:
+    #     prompt = "Что изображено на картинках?"
     try:
         files_urls = []
         # Обработка каждого файла
