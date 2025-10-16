@@ -314,14 +314,14 @@ async def analyze_files(files: List[UploadFile], data = Body()):
         prompt = "Проанализируй содержимое этих файлов"
     
     try:
-        # Для каждого файла создаем контент
         content = [{"type": "text", "text": prompt}]
+        uploaded_files = []
         
         for file in files:
             file_bytes = await file.read()
             
             if file.content_type.startswith("image/"):
-                # Для изображений - base64
+                # Для изображений используем base64
                 base64_image = base64.b64encode(file_bytes).decode("utf-8")
                 content.append({
                     "type": "image_url",
@@ -330,7 +330,7 @@ async def analyze_files(files: List[UploadFile], data = Body()):
                     }
                 })
             else:
-                # Для документов - загружаем и используем file_id
+                # Для документов загружаем в OpenAI и используем file_id
                 temp_filename = f"temp_{file.filename}"
                 with open(temp_filename, "wb") as f:
                     f.write(file_bytes)
@@ -342,13 +342,14 @@ async def analyze_files(files: List[UploadFile], data = Body()):
                             purpose="assistants"
                         )
                     
+                    # Используем только file_id, без filename
                     content.append({
                         "type": "file",
                         "file": {
-                            "file_id": uploaded_file.id,
-                            "filename": file.filename
+                            "file_id": uploaded_file.id
                         }
                     })
+                    uploaded_files.append(uploaded_file.id)
                 finally:
                     if os.path.exists(temp_filename):
                         os.remove(temp_filename)
@@ -366,6 +367,13 @@ async def analyze_files(files: List[UploadFile], data = Body()):
         )
         
         analysis = response.choices[0].message.content
+        
+        # Очищаем загруженные файлы
+        for file_id in uploaded_files:
+            try:
+                client.files.delete(file_id)
+            except:
+                pass  # Игнорируем ошибки при удалении
         
         return {
             "success": True,
