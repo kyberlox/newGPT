@@ -169,7 +169,7 @@ def upload_file(file: UploadFile, data=Body()):
 '''
 
 # Разрешенные типы изображений
-ALLOWED_MIME_TYPES = {
+ALLOWED_IMAGE_TYPES = {
     "image/jpeg": "jpg",
     "image/png": "png",
     "image/gif": "gif",
@@ -188,10 +188,10 @@ async def create_upload_files(files: List[UploadFile], data=Body()): #, prompt: 
         for file in files:
 
             # Проверяем, что файл - изображение
-            if file.content_type not in ALLOWED_MIME_TYPES:
+            if file.content_type not in ALLOWED_IMAGE_TYPES:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Неподдерживаемый тип файла. Разрешены: {', '.join(ALLOWED_MIME_TYPES.keys())}"
+                    detail=f"Неподдерживаемый тип файла. Разрешены: {', '.join(ALLOWED_IMAGE_TYPES.keys())}"
                 )
 
             # Проверка размера (макс. 10MB)
@@ -243,7 +243,6 @@ async def create_upload_files(files: List[UploadFile], data=Body()): #, prompt: 
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
-
 
 openai.api_key = key
 
@@ -298,3 +297,232 @@ async def generate_image(data=Body()):
         raise HTTPException(status_code=400, detail=f"Неверный запрос: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
+
+
+
+# Расширенные разрешенные типы файлов
+ALLOWED_MIME_TYPES = {
+    # Изображения
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/gif": "gif",
+    "image/webp": "webp",
+    
+    # Документы
+    "application/pdf": "pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+    "application/vnd.ms-excel": "xls",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+    "application/json": "json",
+    "application/xml": "xml",
+    "text/xml": "xml",
+    "text/plain": "txt",
+    "text/csv": "csv",
+}
+
+def extract_text_from_file(file_bytes: bytes, content_type: str, filename: str) -> str:
+    """Извлекает текст из файла в зависимости от его типа"""
+    
+    try:
+        if content_type == "application/pdf":
+            return extract_text_from_pdf(file_bytes)
+        
+        elif content_type in ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"]:
+            return extract_text_from_docx(file_bytes)
+        
+        elif content_type in ["application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]:
+            return extract_text_from_excel(file_bytes)
+        
+        elif content_type in ["application/json", "text/json"]:
+            return extract_text_from_json(file_bytes)
+        
+        elif content_type in ["application/xml", "text/xml"]:
+            return extract_text_from_xml(file_bytes)
+        
+        elif content_type in ["text/plain", "text/csv"]:
+            return file_bytes.decode('utf-8')
+        
+        else:
+            return f"Формат файла {content_type} не поддерживается для текстового анализа"
+            
+    except Exception as e:
+        return f"Ошибка при извлечении текста из файла {filename}: {str(e)}"
+
+def extract_text_from_pdf(file_bytes: bytes) -> str:
+    """Извлекает текст из PDF"""
+    pdf_file = PyPDF2.PdfReader(io.BytesIO(file_bytes))
+    text = ""
+    for page in pdf_file.pages:
+        text += page.extract_text() + "\n"
+    return text
+
+def extract_text_from_docx(file_bytes: bytes) -> str:
+    """Извлекает текст из Word документа"""
+    doc = Document(io.BytesIO(file_bytes))
+    text = ""
+    for paragraph in doc.paragraphs:
+        text += paragraph.text + "\n"
+    return text
+
+def extract_text_from_excel(file_bytes: bytes) -> str:
+    """Извлекает текст из Excel файла"""
+    excel_file = pd.ExcelFile(io.BytesIO(file_bytes))
+    text = ""
+    
+    for sheet_name in excel_file.sheet_names:
+        df = pd.read_excel(excel_file, sheet_name=sheet_name)
+        text += f"Лист: {sheet_name}\n"
+        text += df.to_string() + "\n\n"
+    
+    return text
+
+def extract_text_from_json(file_bytes: bytes) -> str:
+    """Извлекает текст из JSON файла"""
+    data = json.loads(file_bytes.decode('utf-8'))
+    return json.dumps(data, ensure_ascii=False, indent=2)
+
+def extract_text_from_xml(file_bytes: bytes) -> str:
+    """Извлекает текст из XML файла"""
+    root = ET.fromstring(file_bytes.decode('utf-8'))
+    return ET.tostring(root, encoding='unicode', method='xml')
+
+@app.post("/analyze-files")
+async def analyze_files(files: List[UploadFile], data: dict = Body()):
+    """Анализирует различные типы файлов"""
+    
+    if "prompt" in data:
+        prompt = data["prompt"]
+    else:
+        prompt = "Проанализируй содержимое этих файлов"
+    
+    try:
+        files_content = []
+        
+        for file in files:
+            # Проверяем тип файла
+            if file.content_type not in ALLOWED_MIME_TYPES:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Неподдерживаемый тип файла: {file.content_type}. Разрешены: {', '.join(ALLOWED_MIME_TYPES.keys())}"
+                )
+
+            # Проверка размера (макс. 10MB)
+            max_size = 10 * 1024 * 1024
+            file.file.seek(0, 2)
+            file_size = file.file.tell()
+            if file_size > max_size:
+                raise HTTPException(status_code=413, detail=f"Файл {file.filename} слишком большой (максимум 10MB)")
+            file.file.seek(0)
+
+            # Читаем файл
+            file_bytes = await file.read()
+
+            # Для изображений используем base64
+            if file.content_type.startswith("image/"):
+                base64_image = base64.b64encode(file_bytes).decode("utf-8")
+                file_content = {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:{file.content_type};base64,{base64_image}"
+                    }
+                }
+            else:
+                # Для документов извлекаем текст
+                extracted_text = extract_text_from_file(file_bytes, file.content_type, file.filename)
+                file_content = {
+                    "type": "text",
+                    "text": f"Файл: {file.filename}\n\n{extracted_text}"
+                }
+
+            files_content.append(file_content)
+
+        # Добавляем промпт
+        files_content.append({"type": "text", "text": prompt})
+
+        # Отправляем в OpenAI
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "user",
+                    "content": files_content
+                }
+            ],
+            max_tokens=2000,  # Увеличиваем токены для текстовых файлов
+        )
+
+        analysis = response.choices[0].message.content
+
+        return JSONResponse({
+            "success": True,
+            "files_processed": [file.filename for file in files],
+            "analysis": analysis,
+        })
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
+
+# Альтернативная версия только для документов (без изображений)
+@app.post("/analyze-documents")
+async def analyze_documents(files: List[UploadFile], data: dict = Body()):
+    """Анализирует только документы (без изображений)"""
+    
+    if "prompt" in data:
+        prompt = data["prompt"]
+    else:
+        prompt = "Проанализируй содержимое этих документов"
+    
+    try:
+        combined_text = ""
+        
+        for file in files:
+            # Проверяем, что это не изображение
+            if file.content_type.startswith("image/"):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Этот endpoint предназначен только для документов. Используйте /analyze-files для изображений."
+                )
+
+            if file.content_type not in ALLOWED_MIME_TYPES:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Неподдерживаемый тип файла: {file.content_type}"
+                )
+
+            # Проверка размера
+            max_size = 10 * 1024 * 1024
+            file.file.seek(0, 2)
+            file_size = file.file.tell()
+            if file_size > max_size:
+                raise HTTPException(status_code=413, detail=f"Файл {file.filename} слишком большой")
+            file.file.seek(0)
+
+            # Извлекаем текст
+            file_bytes = await file.read()
+            extracted_text = extract_text_from_file(file_bytes, file.content_type, file.filename)
+            combined_text += f"\n\n--- Файл: {file.filename} ---\n{extracted_text}"
+
+        # Отправляем в OpenAI
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt + combined_text}
+                    ]
+                }
+            ],
+            max_tokens=3000,
+        )
+
+        analysis = response.choices[0].message.content
+
+        return JSONResponse({
+            "success": True,
+            "files_processed": [file.filename for file in files],
+            "analysis": analysis,
+        })
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
