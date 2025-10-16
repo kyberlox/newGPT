@@ -314,90 +314,169 @@ async def analyze_files(files: List[UploadFile], data = Body()):
         prompt = "Проанализируй содержимое этих файлов"
     
     try:
-        files_content = []
+        # Разделяем файлы на изображения и документы
+        image_files = []
+        document_files = []
         
         for file in files:
             file_bytes = await file.read()
-            
             if file.content_type.startswith("image/"):
-                # Для изображений используем base64
-                base64_image = base64.b64encode(file_bytes).decode("utf-8")
-                file_content = {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:{file.content_type};base64,{base64_image}"
-                    }
-                }
-                files_content.append(file_content)
-                
+                image_files.append({
+                    "filename": file.filename,
+                    "content_type": file.content_type,
+                    "bytes": file_bytes
+                })
             else:
-                # Для документов используем Assistants API
-                # Создаем временный файл
-                with tempfile.NamedTemporaryFile(delete=False, suffix=file.filename) as temp_file:
-                    temp_file.write(file_bytes)
-                    temp_path = temp_file.name
-                
-                try:
-                    # Загружаем файл в OpenAI
-                    with open(temp_path, "rb") as file_stream:
-                        uploaded_file = client.files.create(
-                            file=file_stream,
-                            purpose="assistants"
-                        )
-                    
-                    # Создаем ассистента с инструментом retrieval
-                    assistant = client.beta.assistants.create(
-                        instructions="Ты — помощник для анализа документов.",
-                        model="gpt-4-turbo",
-                        tools=[{"type": "retrieval"}]
-                    )
-                    
-                    # Создаем тред и добавляем сообщение с файлом
-                    thread = client.beta.threads.create(
-                        messages=[
-                            {
-                                "role": "user",
-                                "content": prompt,
-                                "file_ids": [uploaded_file.id]
-                            }
-                        ]
-                    )
-                    
-                    # Запускаем ассистента
-                    run = client.beta.threads.runs.create(
-                        thread_id=thread.id,
-                        assistant_id=assistant.id
-                    )
-                    
-                    # Ждем завершения (здесь нужна более сложная логика опроса)
-                    import time
-                    while run.status not in ["completed", "failed"]:
-                        time.sleep(1)
-                        run = client.beta.threads.runs.retrieve(
-                            thread_id=thread.id,
-                            run_id=run.id
-                        )
-                    
-                    if run.status == "completed":
-                        # Получаем ответ
-                        messages = client.beta.threads.messages.list(
-                            thread_id=thread.id
-                        )
-                        analysis_result = messages.data[0].content[0].text.value
-                        
-                        files_content.append({
-                            "type": "text",
-                            "text": f"Анализ документа {file.filename}:\n{analysis_result}"
-                        })
-                    
-                    # Удаляем ассистента и файл после использования
-                    client.beta.assistants.delete(assistant.id)
-                    client.files.delete(uploaded_file.id)
-                    
-                finally:
-                    os.unlink(temp_path)
-
-        # Дальнейшая обработка files_content...
+                document_files.append({
+                    "filename": file.filename,
+                    "content_type": file.content_type,
+                    "bytes": file_bytes
+                })
+        
+        # Обрабатываем документы через Assistants API
+        document_analysis = ""
+        if document_files:
+            document_analysis = await process_documents_with_assistant(document_files, prompt)
+        
+        # Обрабатываем изображения через Chat Completions
+        image_analysis = ""
+        if image_files:
+            image_analysis = await process_images_with_chat(image_files, prompt)
+        
+        # Формируем финальный ответ
+        if document_analysis and image_analysis:
+            final_analysis = f"АНАЛИЗ ДОКУМЕНТОВ:\n{document_analysis}\n\nАНАЛИЗ ИЗОБРАЖЕНИЙ:\n{image_analysis}"
+        elif document_analysis:
+            final_analysis = document_analysis
+        else:
+            final_analysis = image_analysis
+        
+        return {
+            "success": True,
+            "files_processed": [file.filename for file in files],
+            "analysis": final_analysis
+        }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
+
+async def process_documents_with_assistant(document_files: list, prompt: str) -> str:
+    """Обрабатывает документы через Assistants API"""
+    try:
+        # Загружаем файлы в OpenAI
+        file_ids = []
+        for doc_file in document_files:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=doc_file["filename"]) as temp_file:
+                temp_file.write(doc_file["bytes"])
+                temp_path = temp_file.name
+            
+            try:
+                with open(temp_path, "rb") as file_stream:
+                    uploaded_file = client.files.create(
+                        file=file_stream,
+                        purpose="assistants"
+                    )
+                file_ids.append(uploaded_file.id)
+            finally:
+                os.unlink(temp_path)
+        
+        # Создаем векторное хранилище
+        vector_store = client.vector_stores.create(
+            name="Document Analysis"
+        )
+        
+        # Добавляем файлы в векторное хранилище
+        for file_id in file_ids:
+            client.vector_stores.files.create(
+                vector_store_id=vector_store.id,
+                file_id=file_id
+            )
+        
+        # Создаем ассистента
+        assistant = client.beta.assistants.create(
+            instructions="Ты - помощник для анализа документов. Анализируй содержимое файлов и отвечай на вопросы.",
+            model="gpt-4-turbo",
+            tools=[{"type": "file_search"}],
+            tool_resources={
+                "file_search": {
+                    "vector_store_ids": [vector_store.id]
+                }
+            }
+        )
+        
+        # Создаем тред и запускаем
+        thread = client.beta.threads.create(
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                    "file_ids": file_ids
+                }
+            ]
+        )
+        
+        run = client.beta.threads.runs.create(
+            thread_id=thread.id,
+            assistant_id=assistant.id
+        )
+        
+        # Ждем завершения
+        while run.status not in ["completed", "failed", "cancelled", "expired"]:
+            await asyncio.sleep(1)
+            run = client.beta.threads.runs.retrieve(
+                thread_id=thread.id,
+                run_id=run.id
+            )
+        
+        if run.status == "completed":
+            # Получаем ответ
+            messages = client.beta.threads.messages.list(
+                thread_id=thread.id
+            )
+            analysis = messages.data[0].content[0].text.value
+        else:
+            analysis = f"Ошибка обработки документов: {run.status}"
+        
+        # Очистка ресурсов
+        try:
+            client.beta.assistants.delete(assistant.id)
+            for file_id in file_ids:
+                client.files.delete(file_id)
+            client.vector_stores.delete(vector_store.id)
+        except:
+            pass  # Игнорируем ошибки очистки
+        
+        return analysis
+        
+    except Exception as e:
+        return f"Ошибка при обработке документов: {str(e)}"
+
+async def process_images_with_chat(image_files: list, prompt: str) -> str:
+    """Обрабатывает изображения через Chat Completions"""
+    try:
+        content = [{"type": "text", "text": prompt}]
+        
+        for image_file in image_files:
+            base64_image = base64.b64encode(image_file["bytes"]).decode("utf-8")
+            content.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:{image_file['content_type']};base64,{base64_image}"
+                }
+            })
+        
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "user",
+                    "content": content
+                }
+            ],
+            max_tokens=2000
+        )
+        
+        return response.choices[0].message.content
+        
+    except Exception as e:
+        return f"Ошибка при обработке изображений: {str(e)}"
