@@ -403,74 +403,102 @@ async def analyze_files(files: List[UploadFile], data = Body()):
         prompt = "Проанализируй содержимое этих файлов"
     
     try:
-        files_content = []
+        uploaded_file_ids = []
         
+        # Загрузка файлов на серверы OpenAI
         for file in files:
-            # Проверяем тип файла
-            if file.content_type not in ALLOWED_MIME_TYPES:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Неподдерживаемый тип файла: {file.content_type}. Разрешены: {', '.join(ALLOWED_MIME_TYPES.keys())}"
-                )
-
-            # Проверка размера (макс. 10MB)
-            max_size = 5 * 1024 * 1024
-            file.file.seek(0, 2)
-            file_size = file.file.tell()
-            if file_size > max_size:
-                raise HTTPException(status_code=413, detail=f"Файл {file.filename} слишком большой (максимум 5MB)")
-            file.file.seek(0)
-
-            # Читаем файл
-            file_bytes = await file.read()
-
-            # Для изображений используем base64
-            if file.content_type.startswith("image/"):
-                base64_image = base64.b64encode(file_bytes).decode("utf-8")
-                file_content = {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:{file.content_type};base64,{base64_image}"
-                    }
+            # Читаем содержимое файла
+            content = await file.read()
+            
+            # Создаем временный файл
+            temp_filename = f"temp_{uuid.uuid4()}_{file.filename}"
+            with open(temp_filename, "wb") as f:
+                f.write(content)
+            
+            # Загружаем в OpenAI
+            try:
+                with open(temp_filename, "rb") as file_stream:
+                    uploaded_file = client.files.create(
+                        file=file_stream,
+                        purpose="assistants"
+                    )
+                uploaded_file_ids.append(uploaded_file.id)
+            finally:
+                # Удаляем временный файл
+                os.remove(temp_filename)
+        
+        # Создаем векторное хранилище для поиска по файлам
+        vector_store = client.beta.vector_stores.create(
+            name="Analysis Files"
+        )
+        
+        # Добавляем файлы в векторное хранилище
+        for file_id in uploaded_file_ids:
+            client.beta.vector_stores.files.create(
+                vector_store_id=vector_store.id,
+                file_id=file_id
+            )
+        
+        # Создаем ассистента с доступом к файлам
+        assistant = client.beta.assistants.create(
+            instructions="Вы - помощник для анализа документов и изображений.",
+            model="gpt-4-turbo",
+            tools=[{"type": "file_search"}],
+            tool_resources={
+                "file_search": {
+                    "vector_store_ids": [vector_store.id]
                 }
-            else:
-                # Для документов извлекаем текст
-                extracted_text = extract_text_from_file(file_bytes, file.content_type, file.filename)
-                # Ограничиваем текст
-                if len(extracted_text) > 10000:
-                    extracted_text = extracted_text[:10000] + "... [текст сокращен]"
-                file_content = {
-                    "type": "text",
-                    "text": f"Файл: {file.filename}\n\n{extracted_text}"
-                }
-
-            files_content.append(file_content)
-
-        # Добавляем промпт
-        files_content.append({"type": "text", "text": prompt})
-
-        # Отправляем в OpenAI
-        response = client.chat.completions.create(
-            model="gpt-4o",
+            }
+        )
+        
+        # Создаем тред и отправляем сообщение
+        thread = client.beta.threads.create(
             messages=[
                 {
                     "role": "user",
-                    "content": files_content
+                    "content": prompt,
+                    "attachments": [
+                        {
+                            "file_id": file_id,
+                            "tools": [{"type": "file_search"}]
+                        }
+                        for file_id in uploaded_file_ids
+                    ]
                 }
-            ],
-            max_tokens=2000,  # Увеличиваем токены для текстовых файлов
+            ]
         )
-
-        analysis = response.choices[0].message.content
-
-        return JSONResponse({
-            "success": True,
-            "files_processed": [file.filename for file in files],
-            "analysis": analysis,
-        })
         
+        # Запускаем ассистента
+        run = client.beta.threads.runs.create(
+            thread_id=thread.id,
+            assistant_id=assistant.id
+        )
+        
+        # Ожидаем завершения
+        while run.status in ["queued", "in_progress"]:
+            run = client.beta.threads.runs.retrieve(
+                thread_id=thread.id,
+                run_id=run.id
+            )
+        
+        if run.status == "completed":
+            # Получаем ответ
+            messages = client.beta.threads.messages.list(
+                thread_id=thread.id
+            )
+            
+            analysis = messages.data[0].content[0].text.value
+            
+            return {
+                "success": True,
+                "files_processed": [file.filename for file in files],
+                "analysis": analysis
+            }
+        else:
+            raise HTTPException(status_code=500, detail=f"Ошибка анализа: {run.status}")
+            
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
 
 # Альтернативная версия только для документов (без изображений)
 @app.post("/analyze-documents")
