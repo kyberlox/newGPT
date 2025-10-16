@@ -23,6 +23,13 @@ import asyncio
 
 import base64
 
+import pandas as pd
+import json
+import xml.etree.ElementTree as ET
+from docx import Document
+import PyPDF2
+import io
+
 
 load_dotenv()
 key = os.getenv('key')
