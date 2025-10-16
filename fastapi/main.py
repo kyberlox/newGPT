@@ -414,11 +414,11 @@ async def analyze_files(files: List[UploadFile], data = Body()):
                 )
 
             # Проверка размера (макс. 10MB)
-            max_size = 10 * 1024 * 1024
+            max_size = 5 * 1024 * 1024
             file.file.seek(0, 2)
             file_size = file.file.tell()
             if file_size > max_size:
-                raise HTTPException(status_code=413, detail=f"Файл {file.filename} слишком большой (максимум 10MB)")
+                raise HTTPException(status_code=413, detail=f"Файл {file.filename} слишком большой (максимум 5MB)")
             file.file.seek(0)
 
             # Читаем файл
@@ -455,7 +455,7 @@ async def analyze_files(files: List[UploadFile], data = Body()):
                     "content": files_content
                 }
             ],
-            max_tokens=30000,  # Увеличиваем токены для текстовых файлов
+            max_tokens=2000,  # Увеличиваем токены для текстовых файлов
         )
 
         analysis = response.choices[0].message.content
