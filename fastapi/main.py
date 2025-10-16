@@ -308,7 +308,7 @@ async def generate_image(data=Body()):
 async def analyze_files(files: List[UploadFile], data = Body()):
     """Анализирует различные типы файлов"""
     print(data)
-    if "prompt" in data:
+    if "prompt" in data.keys():
         prompt = data["prompt"]
     else:
         prompt = "Проанализируй содержимое этих файлов"
