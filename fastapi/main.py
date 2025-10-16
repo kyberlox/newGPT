@@ -313,73 +313,80 @@ async def analyze_files(files: List[UploadFile], data = Body()):
     else:
         prompt = "Проанализируй содержимое этих файлов"
     
-    try:
-        content = [{"type": "text", "text": prompt}]
-        uploaded_files = []
-        
+     try:
+        # Загружаем файлы
+        file_ids = []
         for file in files:
             file_bytes = await file.read()
             
-            if file.content_type.startswith("image/"):
-                # Для изображений используем base64
-                base64_image = base64.b64encode(file_bytes).decode("utf-8")
-                content.append({
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:{file.content_type};base64,{base64_image}"
-                    }
-                })
-            else:
-                # Для документов загружаем в OpenAI и используем file_id
-                temp_filename = f"temp_{file.filename}"
-                with open(temp_filename, "wb") as f:
-                    f.write(file_bytes)
-                
-                try:
-                    with open(temp_filename, "rb") as file_stream:
-                        uploaded_file = client.files.create(
-                            file=file_stream,
-                            purpose="assistants"
-                        )
-                    
-                    # Используем только file_id, без filename
-                    content.append({
-                        "type": "file",
-                        "file": {
-                            "file_id": uploaded_file.id
-                        }
-                    })
-                    uploaded_files.append(uploaded_file.id)
-                finally:
-                    if os.path.exists(temp_filename):
-                        os.remove(temp_filename)
+            temp_filename = f"temp_{file.filename}"
+            with open(temp_filename, "wb") as f:
+                f.write(file_bytes)
+            
+            try:
+                with open(temp_filename, "rb") as file_stream:
+                    uploaded_file = client.files.create(
+                        file=file_stream,
+                        purpose="assistants"
+                    )
+                file_ids.append(uploaded_file.id)
+            finally:
+                if os.path.exists(temp_filename):
+                    os.remove(temp_filename)
         
-        # Отправляем запрос
-        response = client.chat.completions.create(
-            model="gpt-4o",
+        # Создаем ассистента
+        assistant = client.beta.assistants.create(
+            instructions="Ты - помощник для анализа файлов.",
+            model="gpt-4-turbo",
+            tools=[{"type": "retrieval"}]
+        )
+        
+        # Создаем тред и добавляем сообщение с файлами
+        thread = client.beta.threads.create(
             messages=[
                 {
                     "role": "user",
-                    "content": content
+                    "content": prompt,
+                    "file_ids": file_ids
                 }
-            ],
-            max_tokens=2000
+            ]
         )
         
-        analysis = response.choices[0].message.content
+        # Запускаем ассистента
+        run = client.beta.threads.runs.create(
+            thread_id=thread.id,
+            assistant_id=assistant.id
+        )
         
-        # Очищаем загруженные файлы
-        for file_id in uploaded_files:
-            try:
+        # Ждем завершения
+        import time
+        while run.status not in ["completed", "failed"]:
+            time.sleep(1)
+            run = client.beta.threads.runs.retrieve(
+                thread_id=thread.id,
+                run_id=run.id
+            )
+        
+        if run.status == "completed":
+            # Получаем сообщения
+            messages = client.beta.threads.messages.list(
+                thread_id=thread.id
+            )
+            
+            analysis = messages.data[0].content[0].text.value
+            
+            # Очищаем
+            client.beta.assistants.delete(assistant.id)
+            for file_id in file_ids:
                 client.files.delete(file_id)
-            except:
-                pass  # Игнорируем ошибки при удалении
-        
-        return {
-            "success": True,
-            "files_processed": [file.filename for file in files],
-            "analysis": analysis
-        }
+            
+            return {
+                "success": True,
+                "files_processed": [file.filename for file in files],
+                "analysis": analysis
+            }
+        else:
+            raise HTTPException(status_code=500, detail=f"Ошибка выполнения: {run.status}")
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
