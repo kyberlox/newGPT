@@ -307,7 +307,7 @@ async def generate_image(data=Body()):
 @app.post("/analyze-files")
 async def analyze_files(files: List[UploadFile], data = Body()):
     """Анализирует различные типы файлов"""
-    
+    print(data)
     if "prompt" in data:
         prompt = data["prompt"]
     else:
@@ -361,6 +361,8 @@ async def analyze_files(files: List[UploadFile], data = Body()):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
+
+
 
 async def extract_text_from_document(file_bytes: bytes, content_type: str, filename: str) -> str:
     """Извлекает текст из документов простым способом"""
