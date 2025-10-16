@@ -314,87 +314,62 @@ async def analyze_files(files: List[UploadFile], data = Body()):
         prompt = "Проанализируй содержимое этих файлов"
     
     try:
-        uploaded_files = []
+        # Для каждого файла создаем контент
+        content = [{"type": "text", "text": prompt}]
         
-        # Загружаем все файлы в OpenAI
         for file in files:
             file_bytes = await file.read()
             
-            # Создаем временный файл для загрузки
-            temp_filename = f"temp_{file.filename}"
-            with open(temp_filename, "wb") as f:
-                f.write(file_bytes)
-            
-            try:
-                # Загружаем файл в OpenAI
-                with open(temp_filename, "rb") as file_stream:
-                    uploaded_file = client.files.create(
-                        file=file_stream,
-                        purpose="assistants"
-                    )
-                uploaded_files.append({
-                    "id": uploaded_file.id,
-                    "filename": file.filename,
-                    "type": file.content_type
-                })
-            finally:
-                # Удаляем временный файл
-                if os.path.exists(temp_filename):
-                    os.remove(temp_filename)
-        
-        # Создаем простой запрос с использованием file_ids
-        if len(uploaded_files) == 1:
-            # Для одного файла - простой запрос
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "text", 
-                                "text": prompt
-                            },
-                            {
-                                "type": "file",
-                                "file": {
-                                    "file_id": uploaded_files[0]["id"],
-                                    "filename": uploaded_files[0]["filename"]
-                                }
-                            }
-                        ]
-                    }
-                ],
-                max_tokens=2000
-            )
-        else:
-            # Для нескольких файлов
-            content = [{"type": "text", "text": prompt}]
-            for uploaded_file in uploaded_files:
+            if file.content_type.startswith("image/"):
+                # Для изображений - base64
+                base64_image = base64.b64encode(file_bytes).decode("utf-8")
                 content.append({
-                    "type": "file",
-                    "file": {
-                        "file_id": uploaded_file["id"],
-                        "filename": uploaded_file["filename"]
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:{file.content_type};base64,{base64_image}"
                     }
                 })
-            
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": content
-                    }
-                ],
-                max_tokens=2000
-            )
+            else:
+                # Для документов - загружаем и используем file_id
+                temp_filename = f"temp_{file.filename}"
+                with open(temp_filename, "wb") as f:
+                    f.write(file_bytes)
+                
+                try:
+                    with open(temp_filename, "rb") as file_stream:
+                        uploaded_file = client.files.create(
+                            file=file_stream,
+                            purpose="assistants"
+                        )
+                    
+                    content.append({
+                        "type": "file",
+                        "file": {
+                            "file_id": uploaded_file.id,
+                            "filename": file.filename
+                        }
+                    })
+                finally:
+                    if os.path.exists(temp_filename):
+                        os.remove(temp_filename)
+        
+        # Отправляем запрос
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "user",
+                    "content": content
+                }
+            ],
+            max_tokens=2000
+        )
         
         analysis = response.choices[0].message.content
         
         return {
             "success": True,
-            "files_processed": [f["filename"] for f in uploaded_files],
+            "files_processed": [file.filename for file in files],
             "analysis": analysis
         }
         
