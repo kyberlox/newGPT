@@ -136,7 +136,7 @@ async def dialog(data=Body()):
     messages.append({"role": "assistant", "content": response.choices[0].message.content})
 
     return messages
-    
+
 
 
 '''
@@ -177,7 +177,11 @@ ALLOWED_MIME_TYPES = {
 }
 
 @app.post("/analyze-image")
-async def create_upload_files(files: List[UploadFile], prompt: str = "Что изображено на картинках?"):
+async def create_upload_files(files: List[UploadFile], data=Body()): #, prompt: str = "Что изображено на картинках?"):
+    if "prompt" in data:
+        promt = data["promt"]
+    else:
+        prompt = "Что изображено на картинках?"
     try:
         files_urls = []
         # Обработка каждого файла
