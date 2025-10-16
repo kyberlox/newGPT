@@ -183,12 +183,16 @@ ALLOWED_IMAGE_TYPES = {
 }
 
 @app.post("/analyze-image")
-async def create_upload_files(files: List[UploadFile], data : dict = Body()): #, prompt: str = "Что изображено на картинках?"):
-    if "prompt" in data:
-        promt = data["promt"]
-    else:
-        prompt = "Что изображено на картинках?"
+async def create_upload_files(
+    files: List[UploadFile] = File(...),
+    data: str = Body(..., media_type="application/json")
+):
+    """Финальный рабочий эндпоинт для анализа файлов"""
     try:
+        # Парсим JSON строку в словарь
+        data_dict = json.loads(data)
+        prompt = data_dict.get("prompt", "Что изображено на картинках?")
+
         files_urls = []
         # Обработка каждого файла
         for file in files:
