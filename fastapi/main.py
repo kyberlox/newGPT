@@ -296,7 +296,7 @@ async def generate_image(data=Body()):
     try:
         print("sformerovan")
         # Вызов DALL·E 3
-        response = openai.images.generate(
+        response = client.images.generate(
             model="dall-e-3",
             prompt=prompt,
             size=size,
@@ -312,7 +312,7 @@ async def generate_image(data=Body()):
             "revised_prompt": response.data[0].revised_prompt  # Оптимизированный запрос
         })
 
-    except openai.BadRequestError as e:
+    except client.BadRequestError as e:
         print(e)
         raise HTTPException(status_code=400, detail=f"Неверный запрос: {str(e)}")
         
