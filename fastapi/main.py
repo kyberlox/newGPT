@@ -36,7 +36,7 @@ organization = os.getenv('organization')
 project_id = os.getenv('project_id')
 
 vseGPT = os.getenv('vseGPT')
-vseGPTurl = "https://api.vsegpt.ru/v1/chat/completions"
+vseGPTurl = "https://api.vsegpt.ru/v1"
 
 
 client = OpenAI(api_key = vseGPT, base_url=vseGPTurl)
