@@ -304,7 +304,7 @@ async def generate_image(data=Body()):
             style=style,
             n=1
         )
-        print(response.data)
+        
 
         return JSONResponse({
             "status": "success",
@@ -313,7 +313,7 @@ async def generate_image(data=Body()):
         })
 
     except openai.BadRequestError as e:
-        print(e, response)
+        print(e, response.data)
         raise HTTPException(status_code=400, detail=f"Неверный запрос: {str(e)}")
         
     except Exception as e:
