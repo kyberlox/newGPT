@@ -292,6 +292,7 @@ async def generate_image(data=Body()):
     if "style" in data:
         style = data["style"]
 
+    print("sformerovan")
     try:
         # Вызов DALL·E 3
         response = openai.images.generate(
@@ -302,7 +303,7 @@ async def generate_image(data=Body()):
             style=style,
             n=1
         )
-        print(response)
+        print(response.data)
 
         return JSONResponse({
             "status": "success",
