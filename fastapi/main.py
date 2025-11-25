@@ -40,7 +40,7 @@ vseGPTurl = "https://api.vsegpt.ru/v1"
 
 
 client = OpenAI(api_key = vseGPT, base_url=vseGPTurl)
-async_client = AsyncOpenAI(api_key = key, base_url=vseGPTurl)
+async_client = AsyncOpenAI(api_key = vseGPT, base_url=vseGPTurl)
 
 
 # client = OpenAI(api_key = key)
