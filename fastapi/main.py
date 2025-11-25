@@ -317,6 +317,7 @@ async def generate_image(data=Body()):
         raise HTTPException(status_code=400, detail=f"Неверный запрос: {str(e)}")
         
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
 
 
