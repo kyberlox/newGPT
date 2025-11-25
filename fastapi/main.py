@@ -41,10 +41,11 @@ vseGPTurl = "https://api.vsegpt.ru/v1"
 
 client = OpenAI(api_key = vseGPT, base_url=vseGPTurl)
 async_client = AsyncOpenAI(api_key = vseGPT, base_url=vseGPTurl)
-
+openai.api_key = vseGPT
 
 # client = OpenAI(api_key = key)
 # async_client = AsyncOpenAI(api_key = key)
+# openai.api_key = key
 
 
 
@@ -260,8 +261,6 @@ async def create_upload_files(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
 
-#openai.api_key = key
-openai.api_key = vseGPT
 
 @app.post("/generate-image")
 async def generate_image(data=Body()):  
