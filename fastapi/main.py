@@ -302,6 +302,7 @@ async def generate_image(data=Body()):
             style=style,
             n=1
         )
+        print(response)
 
         return JSONResponse({
             "status": "success",
