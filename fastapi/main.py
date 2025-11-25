@@ -293,32 +293,23 @@ async def generate_image(data=Body()):
         style = data["style"]
 
     
-    try:
-        print("sformerovan")
-        # Вызов DALL·E 3
-        response = client.images.generate(
-            model="dall-e-3",
-            prompt=prompt,
-            size=size,
-            quality=quality,
-            style=style,
-            n=1
-        )
-        
+    
+    # Вызов DALL·E 3
+    response = client.images.generate(
+        model="dall-e-3",
+        prompt=prompt,
+        size=size,
+        quality=quality,
+        style=style,
+        n=1
+    )
+    
 
-        return JSONResponse({
-            "status": "success",
-            "image_url": response.data[0].url,  # URL изображения (живет 2 часа)
-            "revised_prompt": response.data[0].revised_prompt  # Оптимизированный запрос
-        })
-
-    except client.BadRequestError as e:
-        print(e)
-        raise HTTPException(status_code=400, detail=f"Неверный запрос: {str(e)}")
-        
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
+    return JSONResponse({
+        "status": "success",
+        "image_url": response.data[0].url,  # URL изображения (живет 2 часа)
+        "revised_prompt": response.data[0].revised_prompt  # Оптимизированный запрос
+    })
 
 
 
