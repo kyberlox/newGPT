@@ -313,7 +313,7 @@ async def generate_image(data=Body()):
         })
 
     except openai.BadRequestError as e:
-        print(e, response.data)
+        print(e)
         raise HTTPException(status_code=400, detail=f"Неверный запрос: {str(e)}")
         
     except Exception as e:
