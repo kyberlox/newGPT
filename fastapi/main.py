@@ -260,7 +260,8 @@ async def create_upload_files(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
 
-openai.api_key = key
+#openai.api_key = key
+openai.api_key = vseGPT
 
 @app.post("/generate-image")
 async def generate_image(data=Body()):  
