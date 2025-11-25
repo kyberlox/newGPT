@@ -292,8 +292,9 @@ async def generate_image(data=Body()):
     if "style" in data:
         style = data["style"]
 
-    print("sformerovan")
+    
     try:
+        print("sformerovan")
         # Вызов DALL·E 3
         response = openai.images.generate(
             model="dall-e-3",
